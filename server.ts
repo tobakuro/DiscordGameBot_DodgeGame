@@ -10,7 +10,6 @@ import {
 } from './src/lib/types';
 import {
   TICK_INTERVAL,
-  PLAYERS_REQUIRED,
   ROOM_WAIT_TIMEOUT,
   ROOM_CLEANUP_DELAY,
   COUNTDOWN_SECONDS,
@@ -90,6 +89,8 @@ function broadcastRoomState(room: Room, io: SocketIOServer): void {
       x: p.x,
       y: p.y,
       radius: p.radius,
+      hp: p.hp,
+      maxHp: p.maxHp,
       alive: p.alive,
       ready: p.ready,
     })
@@ -120,6 +121,7 @@ function startGameLoop(room: Room, io: SocketIOServer): void {
         discord_id: hit.discord_id,
         username: hit.username,
         remaining: room.engine.getAlivePlayers().length,
+        hp_remaining: hit.hp,
       });
     }
 

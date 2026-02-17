@@ -2,6 +2,7 @@
 
 import { RoomStatePayload } from '@/lib/types';
 import { PLAYERS_REQUIRED } from '@/lib/constants';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface LobbyProps {
   roomState: RoomStatePayload;
@@ -14,55 +15,66 @@ export default function Lobby({ roomState, onReady, currentSocketId }: LobbyProp
   const isReady = currentPlayer?.ready ?? false;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
-      <div className="bg-gray-800 rounded-2xl p-8 w-full max-w-md shadow-xl">
-        <h1 className="text-2xl font-bold text-center mb-2">Dodge Game</h1>
+    <div className="flex flex-col items-center justify-center min-h-screen text-white relative z-10">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="bg-indigo-950/60 border border-indigo-500/20 rounded-2xl p-8 w-full max-w-md shadow-xl backdrop-blur-sm"
+      >
+        <h1 className="text-2xl font-bold text-center mb-2 text-indigo-100">Dodge Game</h1>
 
         {/* Room Code */}
         <div className="text-center mb-6">
-          <p className="text-gray-400 text-sm">Room Code</p>
+          <p className="text-indigo-300/70 text-sm">Room Code</p>
           <p className="text-4xl font-mono font-bold tracking-widest text-yellow-400">
             {roomState.roomCode}
           </p>
         </div>
 
         {/* Player Count */}
-        <p className="text-center text-gray-400 mb-4">
+        <p className="text-center text-indigo-300/70 mb-4">
           {roomState.players.length} / {PLAYERS_REQUIRED} players
         </p>
 
         {/* Player List */}
         <ul className="space-y-2 mb-6">
-          {roomState.players.map((player) => (
-            <li
-              key={player.id}
-              className={`flex items-center justify-between px-4 py-2 rounded-lg ${
-                player.id === currentSocketId
-                  ? 'bg-blue-900/50 border border-blue-500'
-                  : 'bg-gray-700'
-              }`}
-            >
-              <span className="font-medium">
-                {player.username}
-                {player.id === currentSocketId && (
-                  <span className="text-blue-400 text-sm ml-2">(You)</span>
-                )}
-              </span>
-              <span
-                className={`text-sm font-semibold ${
-                  player.ready ? 'text-green-400' : 'text-gray-500'
+          <AnimatePresence mode="popLayout">
+            {roomState.players.map((player) => (
+              <motion.li
+                key={player.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.3 }}
+                className={`flex items-center justify-between px-4 py-2 rounded-lg ${
+                  player.id === currentSocketId
+                    ? 'bg-indigo-800/50 border border-indigo-400/40'
+                    : 'bg-indigo-900/40 border border-indigo-500/10'
                 }`}
               >
-                {player.ready ? 'READY' : 'NOT READY'}
-              </span>
-            </li>
-          ))}
+                <span className="font-medium">
+                  {player.username}
+                  {player.id === currentSocketId && (
+                    <span className="text-indigo-300 text-sm ml-2">(You)</span>
+                  )}
+                </span>
+                <span
+                  className={`text-sm font-semibold ${
+                    player.ready ? 'text-green-400' : 'text-indigo-400/50'
+                  }`}
+                >
+                  {player.ready ? 'READY' : 'NOT READY'}
+                </span>
+              </motion.li>
+            ))}
+          </AnimatePresence>
           {/* Empty slots */}
           {Array.from({ length: PLAYERS_REQUIRED - roomState.players.length }).map(
             (_, i) => (
               <li
                 key={`empty-${i}`}
-                className="flex items-center justify-center px-4 py-2 rounded-lg bg-gray-700/50 text-gray-600"
+                className="flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-900/20 border border-indigo-500/10 text-indigo-400/40"
               >
                 Waiting for player...
               </li>
@@ -76,7 +88,7 @@ export default function Lobby({ roomState, onReady, currentSocketId }: LobbyProp
           disabled={isReady}
           className={`w-full py-3 rounded-lg font-bold text-lg transition-colors ${
             isReady
-              ? 'bg-green-800 text-green-300 cursor-not-allowed'
+              ? 'bg-green-900/50 text-green-300/70 cursor-not-allowed border border-green-500/20'
               : 'bg-green-600 hover:bg-green-500 text-white cursor-pointer'
           }`}
         >
@@ -84,11 +96,11 @@ export default function Lobby({ roomState, onReady, currentSocketId }: LobbyProp
         </button>
 
         {roomState.players.length < PLAYERS_REQUIRED && (
-          <p className="text-center text-gray-500 text-sm mt-4">
+          <p className="text-center text-indigo-400/50 text-sm mt-4">
             Share the room code with your friends!
           </p>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

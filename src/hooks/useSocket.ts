@@ -6,7 +6,6 @@ import {
   RoomStatePayload,
   GameStatePayload,
   GameStartPayload,
-  PlayerHitPayload,
   GameOverPayload,
   RoomStatus,
 } from '@/lib/types';
@@ -80,7 +79,7 @@ export function useSocket(roomCode: string): UseSocketReturn {
       });
     });
 
-    socket.on('player_hit', (_data: PlayerHitPayload) => {
+    socket.on('player_hit', () => {
       // Could add visual/audio feedback here
     });
 

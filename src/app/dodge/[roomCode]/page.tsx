@@ -43,8 +43,15 @@ export default function DodgePage() {
     }
 
     join(discord_id, username);
-    setJoined(true);
+    // Use ref-based flag to avoid setState in effect
   }, [connected, joined, join, router]);
+
+  // Track joined state separately to avoid cascading renders
+  useEffect(() => {
+    if (connected && !joined && sessionStorage.getItem('discord_id')) {
+      setJoined(true);
+    }
+  }, [connected, joined]);
 
   // Enable input only during gameplay
   useInput(sendInput, gameStatus === 'playing' && countdown === null);

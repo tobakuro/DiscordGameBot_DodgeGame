@@ -7,7 +7,12 @@ export interface Player {
   username: string;
   x: number;
   y: number;
+  vx: number;          // velocity per tick
+  vy: number;
   radius: number;
+  hp: number;
+  maxHp: number;
+  invincibleUntil: number | null;
   alive: boolean;
   ready: boolean;
   eliminatedAt: number | null; // tick when eliminated
@@ -21,6 +26,8 @@ export interface PlayerPublic {
   x: number;
   y: number;
   radius: number;
+  hp: number;
+  maxHp: number;
   alive: boolean;
   ready: boolean;
 }
@@ -80,7 +87,8 @@ export interface GameStatePayload {
 export interface PlayerHitPayload {
   discord_id: string;
   username: string;
-  remaining: number; // alive players count
+  remaining: number;    // alive players count
+  hp_remaining: number; // hit player's remaining HP
 }
 
 export interface GameOverPayload {

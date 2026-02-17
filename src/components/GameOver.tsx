@@ -11,7 +11,7 @@ interface GameOverProps {
 const PLACE_LABELS = ['1st', '2nd', '3rd'];
 const PLACE_COLORS = ['text-yellow-400', 'text-gray-300', 'text-orange-400'];
 
-export default function GameOver({ data, currentSocketId }: GameOverProps) {
+export default function GameOver({ data }: GameOverProps) {
   const router = useRouter();
 
   return (

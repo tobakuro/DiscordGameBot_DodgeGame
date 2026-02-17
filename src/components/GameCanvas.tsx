@@ -1,18 +1,21 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { GameStatePayload } from '@/lib/types';
-import { FIELD_WIDTH, FIELD_HEIGHT, TICK_INTERVAL } from '@/lib/constants';
+import { FIELD_WIDTH, FIELD_HEIGHT, TICK_INTERVAL, INVINCIBILITY_TICKS } from '@/lib/constants';
 
 // Player colors
 const PLAYER_COLORS = ['#3b82f6', '#ef4444', '#22c55e']; // blue, red, green
 const PLAYER_DEAD_ALPHA = 0.3;
+// Duration of hit flash on client (ms) — matches server invincibility
+const HIT_FLASH_DURATION_MS = INVINCIBILITY_TICKS * (1000 / 20);
 
 interface GameCanvasProps {
   gameState: GameStatePayload | null;
   prevGameState: GameStatePayload | null;
   currentSocketId: string | null;
   countdown: number | null;
+  sendInput?: (dx: number, dy: number) => void;
 }
 
 export default function GameCanvas({
@@ -25,13 +28,32 @@ export default function GameCanvas({
   const stateTimeRef = useRef<number>(0);
   const prevStateRef = useRef<GameStatePayload | null>(null);
   const currStateRef = useRef<GameStatePayload | null>(null);
+  // Track hit flash timestamps per player id
+  const hitFlashRef = useRef<Map<string, number>>(new Map());
 
-  // Update refs when new state arrives
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
+
+  // Update refs when new state arrives, detect HP changes for flash
   useEffect(() => {
     if (gameState && gameState !== currStateRef.current) {
+      const oldState = currStateRef.current;
       prevStateRef.current = prevGameState;
       currStateRef.current = gameState;
       stateTimeRef.current = performance.now();
+
+      // Detect HP decrease for hit flash
+      if (oldState) {
+        for (const player of gameState.players) {
+          const oldPlayer = oldState.players.find((p) => p.id === player.id);
+          if (oldPlayer && player.hp < oldPlayer.hp) {
+            hitFlashRef.current.set(player.id, performance.now());
+          }
+        }
+      }
     }
   }, [gameState, prevGameState]);
 
@@ -49,7 +71,6 @@ export default function GameCanvas({
 
       const curr = currStateRef.current;
       if (!curr) {
-        // Draw empty field
         ctx.fillStyle = '#111827';
         ctx.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
         return;
@@ -58,6 +79,7 @@ export default function GameCanvas({
       const prev = prevStateRef.current;
       const elapsed = performance.now() - stateTimeRef.current;
       const t = Math.min(elapsed / TICK_INTERVAL, 1);
+      const now = performance.now();
 
       // Background
       ctx.fillStyle = '#111827';
@@ -91,7 +113,6 @@ export default function GameCanvas({
         let bx = bullet.x;
         let by = bullet.y;
 
-        // Interpolate if we have previous state
         if (prev) {
           const prevBullet = prev.bullets.find((b) => b.id === bullet.id);
           if (prevBullet) {
@@ -102,9 +123,8 @@ export default function GameCanvas({
 
         ctx.beginPath();
         ctx.arc(bx, by, bullet.radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#f97316'; // orange
+        ctx.fillStyle = '#f97316';
         ctx.fill();
-        // Glow effect
         ctx.shadowColor = '#f97316';
         ctx.shadowBlur = 6;
         ctx.fill();
@@ -116,7 +136,6 @@ export default function GameCanvas({
         let px = player.x;
         let py = player.y;
 
-        // Interpolate
         if (prev) {
           const prevPlayer = prev.players.find((p) => p.id === player.id);
           if (prevPlayer) {
@@ -126,7 +145,18 @@ export default function GameCanvas({
         }
 
         const color = PLAYER_COLORS[index % PLAYER_COLORS.length];
-        const alpha = player.alive ? 1 : PLAYER_DEAD_ALPHA;
+        let alpha = player.alive ? 1 : PLAYER_DEAD_ALPHA;
+
+        // Hit flash (blink during invincibility)
+        const hitTime = hitFlashRef.current.get(player.id);
+        const isFlashing = hitTime && (now - hitTime) < HIT_FLASH_DURATION_MS;
+        if (isFlashing && player.alive) {
+          alpha = 0.3 + 0.7 * Math.abs(Math.sin(now / 60));
+        }
+        // Clean up expired flashes
+        if (hitTime && (now - hitTime) >= HIT_FLASH_DURATION_MS) {
+          hitFlashRef.current.delete(player.id);
+        }
 
         ctx.globalAlpha = alpha;
 
@@ -147,7 +177,25 @@ export default function GameCanvas({
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(player.username, px, py - player.radius - 8);
+        ctx.fillText(player.username, px, py - player.radius - 20);
+
+        // HP bar (above username)
+        if (player.alive) {
+          const hpBarWidth = 30;
+          const hpBarHeight = 4;
+          const hpBarX = px - hpBarWidth / 2;
+          const hpBarY = py - player.radius - 16;
+
+          // Background
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+          ctx.fillRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+
+          // HP fill (green → yellow → red)
+          const ratio = player.hp / player.maxHp;
+          const hpColor = ratio > 0.66 ? '#22c55e' : ratio > 0.33 ? '#eab308' : '#ef4444';
+          ctx.fillStyle = hpColor;
+          ctx.fillRect(hpBarX, hpBarY, hpBarWidth * ratio, hpBarHeight);
+        }
 
         // Dead indicator
         if (!player.alive) {
@@ -191,17 +239,50 @@ export default function GameCanvas({
     return () => cancelAnimationFrame(animId);
   }, [currentSocketId, countdown]);
 
+  // Find current player from latest game state
+  const myPlayer = gameState?.players.find((p) => p.id === currentSocketId);
+  const myIndex = gameState?.players.findIndex((p) => p.id === currentSocketId) ?? 0;
+  const myColor = PLAYER_COLORS[myIndex % PLAYER_COLORS.length];
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-950">
-      <div className="relative">
-        <canvas
-          ref={canvasRef}
-          width={FIELD_WIDTH}
-          height={FIELD_HEIGHT}
-          className="border border-gray-700 rounded-lg"
-        />
+      <div>
+        {/* Self status — left-aligned above canvas */}
+        {myPlayer && (
+          <div className="flex items-center gap-2 mb-2">
+            <span
+              className="inline-block w-3 h-3 rounded-full"
+              style={{ backgroundColor: myColor }}
+            />
+            <span className="text-sm text-gray-300 font-medium">
+              {myPlayer.username}
+            </span>
+            <span className="flex gap-1 ml-1">
+              {Array.from({ length: myPlayer.maxHp }, (_, i) => (
+                <span
+                  key={i}
+                  className={`inline-block w-2.5 h-2.5 rounded-sm ${
+                    i < myPlayer.hp ? 'bg-green-500' : 'bg-gray-700'
+                  }`}
+                />
+              ))}
+            </span>
+            {!myPlayer.alive && (
+              <span className="text-xs text-red-400 ml-1">ELIMINATED</span>
+            )}
+          </div>
+        )}
+
+        <div className="relative">
+          <canvas
+            ref={canvasRef}
+            width={FIELD_WIDTH}
+            height={FIELD_HEIGHT}
+            className="border border-gray-700 rounded-lg"
+          />
+        </div>
         <p className="text-gray-500 text-sm text-center mt-2">
-          WASD or Arrow Keys to move
+          {isTouchDevice ? 'Use joystick to move' : 'WASD or Arrow Keys to move'}
         </p>
       </div>
     </div>

@@ -2,71 +2,82 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 
 export default function Home() {
   const router = useRouter();
-  const [discordId, setDiscordId] = useState('');
   const [username, setUsername] = useState('');
+  const [authCode, setAuthCode] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [error, setError] = useState('');
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!discordId.trim() || !username.trim() || !roomCode.trim()) {
-      setError('All fields are required.');
+    if (!username.trim() || !authCode.trim() || !roomCode.trim()) {
+      setError('すべての項目を入力してください。');
       return;
     }
     // Store credentials in sessionStorage for the game page
-    sessionStorage.setItem('discord_id', discordId.trim());
     sessionStorage.setItem('username', username.trim());
+    sessionStorage.setItem('auth_code', authCode.trim());
     router.push(`/dodge/${roomCode.trim().toUpperCase()}`);
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <div className="bg-gray-800 rounded-2xl p-8 w-full max-w-md shadow-xl">
-        <h1 className="text-3xl font-bold text-center mb-2">Dodge Game</h1>
-        <p className="text-gray-400 text-center mb-6">
-          3-player bullet dodge battle
+    <div className="flex flex-col items-center justify-center min-h-screen relative z-10">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="bg-indigo-950/60 border border-indigo-500/20 rounded-2xl p-8 w-full max-w-md shadow-xl backdrop-blur-sm"
+      >
+        <h1 className="text-3xl font-bold text-center mb-2 text-indigo-100">
+          DodgeInvader
+        </h1>
+        <p className="text-indigo-300/70 text-center mb-6">
+          3人対戦 弾幕回避ゲーム
         </p>
 
         <form onSubmit={handleJoin} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Discord ID
-            </label>
-            <input
-              type="text"
-              value={discordId}
-              onChange={(e) => setDiscordId(e.target.value)}
-              placeholder="123456789"
-              className="w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Username
+            <label className="block text-sm font-medium text-indigo-200 mb-1">
+              ユーザー名
             </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Player1"
-              className="w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              placeholder="プレイヤー1"
+              className="w-full px-4 py-2 rounded-lg bg-indigo-900/40 border border-indigo-500/30 text-white placeholder-indigo-400/40 focus:outline-none focus:border-indigo-400 transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Room Code
+            <label className="block text-sm font-medium text-indigo-200 mb-1">
+              認証コード
+            </label>
+            <input
+              type="text"
+              value={authCode}
+              onChange={(e) => setAuthCode(e.target.value)}
+              placeholder="BotのDMに届いたコードを入力"
+              className="w-full px-4 py-2 rounded-lg bg-indigo-900/40 border border-indigo-500/30 text-white placeholder-indigo-400/40 focus:outline-none focus:border-indigo-400 transition-colors"
+            />
+            <p className="text-indigo-400/50 text-xs mt-1">
+              DiscordのBotから受け取った認証コードを入力してください
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-indigo-200 mb-1">
+              ルームID
             </label>
             <input
               type="text"
               value={roomCode}
               onChange={(e) => setRoomCode(e.target.value)}
               placeholder="ABC123"
-              className="w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 uppercase"
+              className="w-full px-4 py-2 rounded-lg bg-indigo-900/40 border border-indigo-500/30 text-white placeholder-indigo-400/40 focus:outline-none focus:border-indigo-400 uppercase transition-colors"
             />
           </div>
 
@@ -76,12 +87,12 @@ export default function Home() {
 
           <button
             type="submit"
-            className="w-full py-3 rounded-lg font-bold text-lg bg-blue-600 hover:bg-blue-500 transition-colors cursor-pointer"
+            className="w-full py-3 rounded-lg font-bold text-lg bg-indigo-600 hover:bg-indigo-500 transition-colors cursor-pointer"
           >
-            Join Game
+            ゲームに参加
           </button>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }

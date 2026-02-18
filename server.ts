@@ -10,7 +10,6 @@ import {
 } from './src/lib/types';
 import {
   TICK_INTERVAL,
-  PLAYERS_REQUIRED,
   ROOM_WAIT_TIMEOUT,
   ROOM_CLEANUP_DELAY,
   COUNTDOWN_SECONDS,
@@ -90,6 +89,8 @@ function broadcastRoomState(room: Room, io: SocketIOServer): void {
       x: p.x,
       y: p.y,
       radius: p.radius,
+      hp: p.hp,
+      maxHp: p.maxHp,
       alive: p.alive,
       ready: p.ready,
     })
@@ -120,6 +121,7 @@ function startGameLoop(room: Room, io: SocketIOServer): void {
         discord_id: hit.discord_id,
         username: hit.username,
         remaining: room.engine.getAlivePlayers().length,
+        hp_remaining: hit.hp,
       });
     }
 
@@ -237,23 +239,47 @@ app.prepare().then(async () => {
 
   io.on('connection', (socket: Socket) => {
     // ------ JOIN ------
-    socket.on('join', (data: JoinPayload) => {
-      const { roomCode, discord_id, username } = data;
-      if (!roomCode || !discord_id || !username) {
-        socket.emit('room_error', { message: 'Missing required fields.' });
+    socket.on('join', async (data: JoinPayload) => {
+      const { roomCode, username, auth_code } = data;
+      if (!roomCode || !username || !auth_code) {
+        socket.emit('room_error', { message: '入力項目が不足しています。' });
+        return;
+      }
+
+      // Verify auth_code with Django API
+      let discord_id: string;
+      let verified_username: string;
+      try {
+        const verifyRes = await fetch(`${DJANGO_API_URL}/api/dodge/verify/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, auth_code }),
+        });
+        if (!verifyRes.ok) {
+          const errBody = await verifyRes.json().catch(() => ({})) as { message?: string };
+          socket.emit('room_error', {
+            message: errBody.message ?? '認証に失敗しました。認証コードを確認してください。',
+          });
+          return;
+        }
+        const verifyData = await verifyRes.json() as { discord_id: string; username: string };
+        discord_id = verifyData.discord_id;
+        verified_username = verifyData.username;
+      } catch {
+        socket.emit('room_error', { message: '認証サーバーに接続できませんでした。' });
         return;
       }
 
       const room = getOrCreateRoom(roomCode);
 
       if (room.engine.status !== 'waiting') {
-        socket.emit('room_error', { message: 'Game already in progress.' });
+        socket.emit('room_error', { message: 'ゲームはすでに進行中です。' });
         return;
       }
 
-      const added = room.engine.addPlayer(socket.id, discord_id, username);
+      const added = room.engine.addPlayer(socket.id, discord_id, verified_username);
       if (!added) {
-        socket.emit('room_error', { message: 'Room is full.' });
+        socket.emit('room_error', { message: 'ルームが満員です。' });
         return;
       }
 

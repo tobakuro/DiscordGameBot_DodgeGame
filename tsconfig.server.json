@@ -11,5 +11,5 @@
     "skipLibCheck": true
   },
   "include": ["server.ts", "src/lib/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "src/lib/sounds.ts"]
 }

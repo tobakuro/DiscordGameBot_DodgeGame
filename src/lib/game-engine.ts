@@ -10,7 +10,9 @@ import {
   FIELD_WIDTH,
   FIELD_HEIGHT,
   PLAYER_RADIUS,
-  PLAYER_SPEED,
+  PLAYER_MAX_SPEED,
+  PLAYER_ACCEL,
+  PLAYER_FRICTION,
   KNOCKBACK,
   BULLET_RADIUS,
   BULLET_BASE_SPEED,
@@ -19,6 +21,8 @@ import {
   BULLET_COUNT_PER_SPAWN,
   BULLET_COUNT_MAX,
   PLAYERS_REQUIRED,
+  PLAYER_MAX_HP,
+  INVINCIBILITY_TICKS,
   STARTING_POSITIONS,
 } from './constants';
 
@@ -51,7 +55,12 @@ export class GameEngine {
       username,
       x: pos.x,
       y: pos.y,
+      vx: 0,
+      vy: 0,
       radius: PLAYER_RADIUS,
+      hp: PLAYER_MAX_HP,
+      maxHp: PLAYER_MAX_HP,
+      invincibleUntil: null,
       alive: true,
       ready: false,
       eliminatedAt: null,
@@ -120,17 +129,42 @@ export class GameEngine {
     this.tick++;
     const hits: Player[] = [];
 
-    // 1. Process inputs
-    for (const [socketId, input] of this.inputs) {
-      const player = this.players.get(socketId);
-      if (!player || !player.alive) continue;
+    // 1. Process inputs — acceleration / friction based movement
+    for (const player of this.players.values()) {
+      if (!player.alive) continue;
 
-      player.x += input.dx * PLAYER_SPEED;
-      player.y += input.dy * PLAYER_SPEED;
+      const input = this.inputs.get(player.id);
+      const hasInput = input && (input.dx !== 0 || input.dy !== 0);
 
-      // Clamp to field
-      player.x = clamp(player.x, player.radius, FIELD_WIDTH - player.radius);
-      player.y = clamp(player.y, player.radius, FIELD_HEIGHT - player.radius);
+      if (hasInput) {
+        // Accelerate toward input direction
+        player.vx += input.dx * PLAYER_ACCEL;
+        player.vy += input.dy * PLAYER_ACCEL;
+      } else {
+        // Apply friction (decelerate) when no input
+        player.vx *= PLAYER_FRICTION;
+        player.vy *= PLAYER_FRICTION;
+        // Stop completely if very slow
+        if (Math.abs(player.vx) < 0.05) player.vx = 0;
+        if (Math.abs(player.vy) < 0.05) player.vy = 0;
+      }
+
+      // Cap to max speed
+      const speed = Math.hypot(player.vx, player.vy);
+      if (speed > PLAYER_MAX_SPEED) {
+        player.vx = (player.vx / speed) * PLAYER_MAX_SPEED;
+        player.vy = (player.vy / speed) * PLAYER_MAX_SPEED;
+      }
+
+      // Apply velocity
+      player.x += player.vx;
+      player.y += player.vy;
+
+      // Clamp to field & zero out velocity on wall hit
+      if (player.x < player.radius) { player.x = player.radius; player.vx = 0; }
+      if (player.x > FIELD_WIDTH - player.radius) { player.x = FIELD_WIDTH - player.radius; player.vx = 0; }
+      if (player.y < player.radius) { player.y = player.radius; player.vy = 0; }
+      if (player.y > FIELD_HEIGHT - player.radius) { player.y = FIELD_HEIGHT - player.radius; player.vy = 0; }
     }
     this.inputs.clear();
 
@@ -178,13 +212,24 @@ export class GameEngine {
         b.y < FIELD_HEIGHT + margin
     );
 
-    // 6. Collision: player vs bullet
+    // 6. Collision: player vs bullet (HP system with invincibility)
     for (const player of alivePlayers) {
+      // Skip invincible players
+      if (player.invincibleUntil !== null && this.tick <= player.invincibleUntil) {
+        continue;
+      }
+
       for (const bullet of this.bullets) {
         if (checkCollision(player, bullet)) {
-          this.eliminatePlayer(player.id);
+          player.hp -= 1;
+          player.invincibleUntil = this.tick + INVINCIBILITY_TICKS;
+
+          if (player.hp <= 0) {
+            this.eliminatePlayer(player.id);
+          }
+
           hits.push(player);
-          break; // one hit is enough to eliminate
+          break; // one bullet per tick per player
         }
       }
     }
@@ -314,6 +359,8 @@ function toPublic(p: Player): PlayerPublic {
     x: p.x,
     y: p.y,
     radius: p.radius,
+    hp: p.hp,
+    maxHp: p.maxHp,
     alive: p.alive,
     ready: p.ready,
   };

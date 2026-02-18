@@ -8,8 +8,10 @@ export const FIELD_HEIGHT = 600;
 
 // Player
 export const PLAYER_RADIUS = 15;
-export const PLAYER_SPEED = 4;    // px per tick
-export const KNOCKBACK = 8;       // px
+export const PLAYER_MAX_SPEED = 4;   // px per tick (top speed)
+export const PLAYER_ACCEL = 0.8;     // px/tick² acceleration when input held
+export const PLAYER_FRICTION = 0.85; // velocity multiplier per tick when no input
+export const KNOCKBACK = 8;          // px
 
 // Bullet
 export const BULLET_RADIUS = 5;
@@ -23,6 +25,10 @@ export const BULLET_COUNT_MAX = 8;              // max bullets per spawn wave
 export const PLAYERS_REQUIRED = 3;
 export const ROOM_WAIT_TIMEOUT = 5 * 60 * 1000;    // 5 min
 export const ROOM_CLEANUP_DELAY = 5 * 60 * 1000;   // 5 min after finish
+
+// HP
+export const PLAYER_MAX_HP = 3;
+export const INVINCIBILITY_TICKS = 40; // 2 seconds at 20Hz
 
 // Countdown
 export const COUNTDOWN_SECONDS = 3;

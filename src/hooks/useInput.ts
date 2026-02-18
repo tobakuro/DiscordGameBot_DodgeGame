@@ -54,11 +54,12 @@ export function useInput(
       }
     }, 50);
 
+    const keys = keysRef.current;
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       clearInterval(interval);
-      keysRef.current.clear();
+      keys.clear();
     };
   }, [sendInput, enabled]);
 }

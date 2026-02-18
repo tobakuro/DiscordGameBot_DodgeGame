@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/useSocket';
 import { useInput } from '@/hooks/useInput';
+import { AnimatePresence, motion } from 'framer-motion';
 import Lobby from '@/components/Lobby';
 import GameCanvas from '@/components/GameCanvas';
 import GameOver from '@/components/GameOver';
@@ -13,7 +14,7 @@ export default function DodgePage() {
   const router = useRouter();
   const roomCode = params.roomCode as string;
 
-  const [joined, setJoined] = useState(false);
+  const joinedRef = useRef(false);
 
   const {
     connected,
@@ -32,77 +33,127 @@ export default function DodgePage() {
 
   // Auto-join on connect
   useEffect(() => {
-    if (!connected || joined) return;
+    if (!connected || joinedRef.current) return;
 
-    const discord_id = sessionStorage.getItem('discord_id');
     const username = sessionStorage.getItem('username');
+    const auth_code = sessionStorage.getItem('auth_code');
 
-    if (!discord_id || !username) {
+    if (!username || !auth_code) {
       router.push('/');
       return;
     }
 
-    join(discord_id, username);
-    setJoined(true);
-  }, [connected, joined, join, router]);
+    joinedRef.current = true;
+    join(username, auth_code);
+  }, [connected, join, router]);
 
   // Enable input only during gameplay
   useInput(sendInput, gameStatus === 'playing' && countdown === null);
 
-  // Connection / error states
-  if (!connected) {
-    return (
-      <div className="flex items-center justify-center min-h-screen text-gray-400">
-        Connecting...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <p className="text-red-400 text-lg">{error}</p>
-        <button
-          onClick={() => router.push('/')}
-          className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 transition-colors cursor-pointer"
+  // Determine which view to render
+  const getView = () => {
+    if (!connected) {
+      return (
+        <motion.div
+          key="connecting"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="flex items-center justify-center min-h-screen text-indigo-300/70"
         >
-          Back to Home
-        </button>
-      </div>
-    );
-  }
+          Connecting...
+        </motion.div>
+      );
+    }
 
-  // Waiting / Lobby
-  if (gameStatus === 'waiting' && roomState) {
+    if (error) {
+      return (
+        <motion.div
+          key="error"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="flex flex-col items-center justify-center min-h-screen gap-4"
+        >
+          <p className="text-red-400 text-lg">{error}</p>
+          <button
+            onClick={() => router.push('/')}
+            className="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-colors cursor-pointer"
+          >
+            ホームに戻る
+          </button>
+        </motion.div>
+      );
+    }
+
+    if (gameStatus === 'waiting' && roomState) {
+      return (
+        <motion.div
+          key="lobby"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Lobby
+            roomState={roomState}
+            onReady={sendReady}
+            currentSocketId={socketId}
+          />
+        </motion.div>
+      );
+    }
+
+    if (gameStatus === 'playing') {
+      return (
+        <motion.div
+          key="playing"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <GameCanvas
+            gameState={gameState}
+            prevGameState={prevGameState}
+            currentSocketId={socketId}
+            countdown={countdown}
+            sendInput={sendInput}
+          />
+        </motion.div>
+      );
+    }
+
+    if (gameStatus === 'finished' && gameOverData) {
+      return (
+        <motion.div
+          key="finished"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <GameOver data={gameOverData} currentSocketId={socketId} />
+        </motion.div>
+      );
+    }
+
     return (
-      <Lobby
-        roomState={roomState}
-        onReady={sendReady}
-        currentSocketId={socketId}
-      />
+      <motion.div
+        key="loading"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="flex items-center justify-center min-h-screen text-indigo-300/70"
+      >
+        Now Loading...
+      </motion.div>
     );
-  }
-
-  // Playing
-  if (gameStatus === 'playing') {
-    return (
-      <GameCanvas
-        gameState={gameState}
-        prevGameState={prevGameState}
-        currentSocketId={socketId}
-        countdown={countdown}
-      />
-    );
-  }
-
-  // Finished
-  if (gameStatus === 'finished' && gameOverData) {
-    return <GameOver data={gameOverData} currentSocketId={socketId} />;
-  }
+  };
 
   return (
-    <div className="flex items-center justify-center min-h-screen text-gray-400">
-      Loading...
-    </div>
+    <AnimatePresence mode="wait">
+      {getView()}
+    </AnimatePresence>
   );
 }

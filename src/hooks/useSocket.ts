@@ -6,10 +6,14 @@ import {
   RoomStatePayload,
   GameStatePayload,
   GameStartPayload,
-  PlayerHitPayload,
   GameOverPayload,
+  PlayerHitPayload,
   RoomStatus,
 } from '@/lib/types';
+
+interface UseSocketOptions {
+  onPlayerHit?: (data: PlayerHitPayload) => void;
+}
 
 interface UseSocketReturn {
   connected: boolean;
@@ -20,14 +24,16 @@ interface UseSocketReturn {
   gameOverData: GameOverPayload | null;
   countdown: number | null;
   error: string | null;
-  join: (discord_id: string, username: string) => void;
+  join: (username: string, auth_code: string) => void;
   sendReady: () => void;
   sendInput: (dx: number, dy: number) => void;
   socketId: string | null;
 }
 
-export function useSocket(roomCode: string): UseSocketReturn {
+export function useSocket(roomCode: string, options?: UseSocketOptions): UseSocketReturn {
   const socketRef = useRef<Socket | null>(null);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
   const [connected, setConnected] = useState(false);
   const [roomState, setRoomState] = useState<RoomStatePayload | null>(null);
   const [gameState, setGameState] = useState<GameStatePayload | null>(null);
@@ -80,8 +86,8 @@ export function useSocket(roomCode: string): UseSocketReturn {
       });
     });
 
-    socket.on('player_hit', (_data: PlayerHitPayload) => {
-      // Could add visual/audio feedback here
+    socket.on('player_hit', (data: PlayerHitPayload) => {
+      optionsRef.current?.onPlayerHit?.(data);
     });
 
     socket.on('game_over', (data: GameOverPayload) => {
@@ -99,8 +105,8 @@ export function useSocket(roomCode: string): UseSocketReturn {
   }, [roomCode]);
 
   const join = useCallback(
-    (discord_id: string, username: string) => {
-      socketRef.current?.emit('join', { roomCode, discord_id, username });
+    (username: string, auth_code: string) => {
+      socketRef.current?.emit('join', { roomCode, username, auth_code });
     },
     [roomCode]
   );

@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "ts-node --project tsconfig.server.json server.ts",
-    "build": "next build",
-    "start": "NODE_ENV=production ts-node --project tsconfig.server.json server.ts",
+    "build": "next build && tsc --project tsconfig.server.json",
+    "start": "NODE_ENV=production node dist/server.js",
     "lint": "eslint"
   },
   "dependencies": {
+    "framer-motion": "^12.34.1",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",

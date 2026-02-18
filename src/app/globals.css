@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #030712;
+  --background: #050816;
   --foreground: #f9fafb;
 }
 
@@ -20,4 +20,17 @@ body {
 
 canvas {
   display: block;
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-twinkle {
+  animation: twinkle ease-in-out infinite;
 }

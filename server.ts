@@ -23,6 +23,7 @@ const port = parseInt(process.env.PORT || '3000', 10);
 const DJANGO_API_URL = process.env.DJANGO_API_URL || 'http://localhost:8000';
 const DJANGO_ADMIN_USERNAME = process.env.DJANGO_ADMIN_USERNAME || 'admin';
 const DJANGO_ADMIN_PASSWORD = process.env.DJANGO_ADMIN_PASSWORD || 'password';
+const GUEST_MODE = process.env.GUEST_MODE === 'true';
 
 let djangoToken: string | null = null;
 
@@ -246,28 +247,33 @@ app.prepare().then(async () => {
         return;
       }
 
-      // Verify auth_code with Django API
+      // Verify auth_code with Django API (skipped in GUEST_MODE)
       let discord_id: string;
       let verified_username: string;
-      try {
-        const verifyRes = await fetch(`${DJANGO_API_URL}/api/dodge/verify/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, auth_code }),
-        });
-        if (!verifyRes.ok) {
-          const errBody = await verifyRes.json().catch(() => ({})) as { message?: string };
-          socket.emit('room_error', {
-            message: errBody.message ?? '認証に失敗しました。認証コードを確認してください。',
+      if (GUEST_MODE) {
+        discord_id = username;
+        verified_username = username;
+      } else {
+        try {
+          const verifyRes = await fetch(`${DJANGO_API_URL}/api/dodge/verify/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, auth_code }),
           });
+          if (!verifyRes.ok) {
+            const errBody = await verifyRes.json().catch(() => ({})) as { message?: string };
+            socket.emit('room_error', {
+              message: errBody.message ?? '認証に失敗しました。認証コードを確認してください。',
+            });
+            return;
+          }
+          const verifyData = await verifyRes.json() as { discord_id: string; username: string };
+          discord_id = verifyData.discord_id;
+          verified_username = verifyData.username;
+        } catch {
+          socket.emit('room_error', { message: '認証サーバーに接続できませんでした。' });
           return;
         }
-        const verifyData = await verifyRes.json() as { discord_id: string; username: string };
-        discord_id = verifyData.discord_id;
-        verified_username = verifyData.username;
-      } catch {
-        socket.emit('room_error', { message: '認証サーバーに接続できませんでした。' });
-        return;
       }
 
       const room = getOrCreateRoom(roomCode);

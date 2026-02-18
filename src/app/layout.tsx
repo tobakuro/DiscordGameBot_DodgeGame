@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import StarfieldBg from "@/components/StarfieldBg";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,8 +26,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950 text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#050816] text-white`}
       >
+        <StarfieldBg />
         {children}
       </body>
     </html>

@@ -278,7 +278,7 @@ export default function GameCanvas({
               ))}
             </span>
             {!myPlayer.alive && (
-              <span className="text-xs text-red-400 ml-1">ELIMINATED</span>
+              <span className="text-xs text-red-400 ml-1">撃墜</span>
             )}
           </div>
         )}
@@ -292,7 +292,7 @@ export default function GameCanvas({
           />
         </div>
         <p className="text-indigo-400/50 text-sm text-center mt-2">
-          {isTouchDevice ? 'Use joystick to move' : 'WASD or Arrow Keys to move'}
+          {isTouchDevice ? 'ジョイスティックで移動' : 'WASD または 矢印キーで移動'}
         </p>
 
         {/* Virtual Joystick for touch devices */}

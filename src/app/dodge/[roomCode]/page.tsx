@@ -80,7 +80,7 @@ export default function DodgePage() {
             onClick={() => router.push('/')}
             className="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-colors cursor-pointer"
           >
-            Back to Home
+            ホームに戻る
           </button>
         </motion.div>
       );
@@ -146,7 +146,7 @@ export default function DodgePage() {
         exit={{ opacity: 0 }}
         className="flex items-center justify-center min-h-screen text-indigo-300/70"
       >
-        Loading...
+        Now Loading...
       </motion.div>
     );
   };

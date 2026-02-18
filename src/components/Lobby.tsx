@@ -22,11 +22,11 @@ export default function Lobby({ roomState, onReady, currentSocketId }: LobbyProp
         transition={{ duration: 0.5 }}
         className="bg-indigo-950/60 border border-indigo-500/20 rounded-2xl p-8 w-full max-w-md shadow-xl backdrop-blur-sm"
       >
-        <h1 className="text-2xl font-bold text-center mb-2 text-indigo-100">Dodge Game</h1>
+        <h1 className="text-2xl font-bold text-center mb-2 text-indigo-100">DodgeInvader</h1>
 
         {/* Room Code */}
         <div className="text-center mb-6">
-          <p className="text-indigo-300/70 text-sm">Room Code</p>
+          <p className="text-indigo-300/70 text-sm">ルームID</p>
           <p className="text-4xl font-mono font-bold tracking-widest text-yellow-400">
             {roomState.roomCode}
           </p>
@@ -56,7 +56,7 @@ export default function Lobby({ roomState, onReady, currentSocketId }: LobbyProp
                 <span className="font-medium">
                   {player.username}
                   {player.id === currentSocketId && (
-                    <span className="text-indigo-300 text-sm ml-2">(You)</span>
+                    <span className="text-indigo-300 text-sm ml-2">（あなた）</span>
                   )}
                 </span>
                 <span
@@ -64,7 +64,7 @@ export default function Lobby({ roomState, onReady, currentSocketId }: LobbyProp
                     player.ready ? 'text-green-400' : 'text-indigo-400/50'
                   }`}
                 >
-                  {player.ready ? 'READY' : 'NOT READY'}
+                  {player.ready ? 'READY' : '準備中...'}
                 </span>
               </motion.li>
             ))}
@@ -76,7 +76,7 @@ export default function Lobby({ roomState, onReady, currentSocketId }: LobbyProp
                 key={`empty-${i}`}
                 className="flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-900/20 border border-indigo-500/10 text-indigo-400/40"
               >
-                Waiting for player...
+                プレイヤーを待っています...
               </li>
             )
           )}
@@ -92,12 +92,12 @@ export default function Lobby({ roomState, onReady, currentSocketId }: LobbyProp
               : 'bg-green-600 hover:bg-green-500 text-white cursor-pointer'
           }`}
         >
-          {isReady ? 'Waiting for others...' : 'READY'}
+          {isReady ? '他のプレイヤーを待っています...' : 'READY'}
         </button>
 
         {roomState.players.length < PLAYERS_REQUIRED && (
           <p className="text-center text-indigo-400/50 text-sm mt-4">
-            Share the room code with your friends!
+            ルームIDを友達に共有しよう！
           </p>
         )}
       </motion.div>

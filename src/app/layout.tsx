@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dodge Game",
-  description: "3-player bullet dodge game",
+  title: "DodgeInvader",
+  description: "3人対戦 弾幕回避ゲーム",
 };
 
 export default function RootLayout({
@@ -24,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="ja" className="dark">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#050816] text-white`}
       >

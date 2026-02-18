@@ -14,7 +14,7 @@ export default function Home() {
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!discordId.trim() || !username.trim() || !roomCode.trim()) {
-      setError('All fields are required.');
+      setError('すべての項目を入力してください。');
       return;
     }
     // Store credentials in sessionStorage for the game page
@@ -32,10 +32,10 @@ export default function Home() {
         className="bg-indigo-950/60 border border-indigo-500/20 rounded-2xl p-8 w-full max-w-md shadow-xl backdrop-blur-sm"
       >
         <h1 className="text-3xl font-bold text-center mb-2 text-indigo-100">
-          Dodge Game
+          DodgeInvader
         </h1>
         <p className="text-indigo-300/70 text-center mb-6">
-          3-player bullet dodge battle
+          3人対戦 弾幕回避ゲーム
         </p>
 
         <form onSubmit={handleJoin} className="space-y-4">
@@ -54,20 +54,20 @@ export default function Home() {
 
           <div>
             <label className="block text-sm font-medium text-indigo-200 mb-1">
-              Username
+              ユーザー名
             </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Player1"
+              placeholder="プレイヤー1"
               className="w-full px-4 py-2 rounded-lg bg-indigo-900/40 border border-indigo-500/30 text-white placeholder-indigo-400/40 focus:outline-none focus:border-indigo-400 transition-colors"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-indigo-200 mb-1">
-              Room Code
+              ルームID
             </label>
             <input
               type="text"
@@ -86,7 +86,7 @@ export default function Home() {
             type="submit"
             className="w-full py-3 rounded-lg font-bold text-lg bg-indigo-600 hover:bg-indigo-500 transition-colors cursor-pointer"
           >
-            Join Game
+            ゲームに参加
           </button>
         </form>
       </motion.div>

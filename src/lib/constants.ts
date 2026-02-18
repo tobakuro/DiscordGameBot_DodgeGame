@@ -33,6 +33,13 @@ export const INVINCIBILITY_TICKS = 40; // 2 seconds at 20Hz
 // Countdown
 export const COUNTDOWN_SECONDS = 3;
 
+// Item (knockback)
+export const ITEM_RADIUS = 12;                   // px
+export const ITEM_SPAWN_INTERVAL_TICKS = 100;    // every 5s at 20Hz
+export const ITEM_MAX_ON_FIELD = 2;              // max simultaneous field items
+export const ITEM_KNOCKBACK = 60;               // px — strong push on use
+export const ITEM_HELD_DURATION_TICKS = 60;     // 3s window to use after pickup
+
 // Starting positions (3 symmetric spots)
 export const STARTING_POSITIONS = [
   { x: FIELD_WIDTH / 2, y: 80 },                    // top center

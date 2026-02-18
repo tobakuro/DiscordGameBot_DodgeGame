@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DodgeInvader",
+  title: "NyaaGenesis",
   description: "3人対戦 弾幕回避ゲーム",
 };
 

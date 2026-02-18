@@ -34,7 +34,7 @@ export default function Home() {
         className="bg-indigo-950/60 border border-indigo-500/20 rounded-2xl p-8 w-full max-w-md shadow-xl backdrop-blur-sm"
       >
         <h1 className="text-3xl font-bold text-center mb-2 text-indigo-100">
-          DodgeInvader
+          NyaaGenesis
         </h1>
         <p className="text-indigo-300/70 text-center mb-6">
           3人対戦 弾幕回避ゲーム

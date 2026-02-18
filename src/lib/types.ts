@@ -33,6 +33,17 @@ export interface PlayerPublic {
 }
 
 // ============================================================
+// Item (knockback)
+// ============================================================
+export interface Item {
+  id: string;
+  x: number;
+  y: number;
+  radius: number;
+  heldBy: string | null; // socket.id of holder, null if on field
+}
+
+// ============================================================
 // Bullet
 // ============================================================
 export interface Bullet {
@@ -81,6 +92,7 @@ export interface GameStartPayload {
 export interface GameStatePayload {
   players: PlayerPublic[];
   bullets: Bullet[];
+  items: Item[];
   elapsed: number; // ticks since game start
 }
 

@@ -35,7 +35,7 @@ export default function GameOver({ data }: GameOverProps) {
           >
             <p className="text-yellow-400 text-5xl mb-2">&#x1F3C6;</p>
             <p className="text-xl font-bold text-yellow-400">
-              {data.winner.username} 勝利！
+              {data.winner.username} の勝利！
             </p>
           </motion.div>
         ) : (

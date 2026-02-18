@@ -137,7 +137,7 @@ export default function VirtualJoystick({ onInput, size = 120 }: VirtualJoystick
           height: knobSize,
           background: 'rgba(99, 102, 241, 0.5)',
           border: '2px solid rgba(165, 180, 252, 0.6)',
-          transition: touchIdRef.current !== null ? 'none' : 'transform 0.15s ease-out',
+          transition: 'transform 0.15s ease-out',
         }}
       />
     </div>

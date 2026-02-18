@@ -7,8 +7,13 @@ import {
   GameStatePayload,
   GameStartPayload,
   GameOverPayload,
+  PlayerHitPayload,
   RoomStatus,
 } from '@/lib/types';
+
+interface UseSocketOptions {
+  onPlayerHit?: (data: PlayerHitPayload) => void;
+}
 
 interface UseSocketReturn {
   connected: boolean;
@@ -25,8 +30,10 @@ interface UseSocketReturn {
   socketId: string | null;
 }
 
-export function useSocket(roomCode: string): UseSocketReturn {
+export function useSocket(roomCode: string, options?: UseSocketOptions): UseSocketReturn {
   const socketRef = useRef<Socket | null>(null);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
   const [connected, setConnected] = useState(false);
   const [roomState, setRoomState] = useState<RoomStatePayload | null>(null);
   const [gameState, setGameState] = useState<GameStatePayload | null>(null);
@@ -79,8 +86,8 @@ export function useSocket(roomCode: string): UseSocketReturn {
       });
     });
 
-    socket.on('player_hit', () => {
-      // Could add visual/audio feedback here
+    socket.on('player_hit', (data: PlayerHitPayload) => {
+      optionsRef.current?.onPlayerHit?.(data);
     });
 
     socket.on('game_over', (data: GameOverPayload) => {

@@ -6,20 +6,20 @@ import { motion } from 'framer-motion';
 
 export default function Home() {
   const router = useRouter();
-  const [discordId, setDiscordId] = useState('');
   const [username, setUsername] = useState('');
+  const [authCode, setAuthCode] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [error, setError] = useState('');
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!discordId.trim() || !username.trim() || !roomCode.trim()) {
+    if (!username.trim() || !authCode.trim() || !roomCode.trim()) {
       setError('すべての項目を入力してください。');
       return;
     }
     // Store credentials in sessionStorage for the game page
-    sessionStorage.setItem('discord_id', discordId.trim());
     sessionStorage.setItem('username', username.trim());
+    sessionStorage.setItem('auth_code', authCode.trim());
     router.push(`/dodge/${roomCode.trim().toUpperCase()}`);
   };
 
@@ -41,19 +41,6 @@ export default function Home() {
         <form onSubmit={handleJoin} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-indigo-200 mb-1">
-              Discord ID
-            </label>
-            <input
-              type="text"
-              value={discordId}
-              onChange={(e) => setDiscordId(e.target.value)}
-              placeholder="123456789"
-              className="w-full px-4 py-2 rounded-lg bg-indigo-900/40 border border-indigo-500/30 text-white placeholder-indigo-400/40 focus:outline-none focus:border-indigo-400 transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-indigo-200 mb-1">
               ユーザー名
             </label>
             <input
@@ -63,6 +50,22 @@ export default function Home() {
               placeholder="プレイヤー1"
               className="w-full px-4 py-2 rounded-lg bg-indigo-900/40 border border-indigo-500/30 text-white placeholder-indigo-400/40 focus:outline-none focus:border-indigo-400 transition-colors"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-indigo-200 mb-1">
+              認証コード
+            </label>
+            <input
+              type="text"
+              value={authCode}
+              onChange={(e) => setAuthCode(e.target.value)}
+              placeholder="BotのDMに届いたコードを入力"
+              className="w-full px-4 py-2 rounded-lg bg-indigo-900/40 border border-indigo-500/30 text-white placeholder-indigo-400/40 focus:outline-none focus:border-indigo-400 transition-colors"
+            />
+            <p className="text-indigo-400/50 text-xs mt-1">
+              DiscordのBotから受け取った認証コードを入力してください
+            </p>
           </div>
 
           <div>

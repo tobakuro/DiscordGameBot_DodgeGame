@@ -35,16 +35,16 @@ export default function DodgePage() {
   useEffect(() => {
     if (!connected || joinedRef.current) return;
 
-    const discord_id = sessionStorage.getItem('discord_id');
     const username = sessionStorage.getItem('username');
+    const auth_code = sessionStorage.getItem('auth_code');
 
-    if (!discord_id || !username) {
+    if (!username || !auth_code) {
       router.push('/');
       return;
     }
 
     joinedRef.current = true;
-    join(discord_id, username);
+    join(username, auth_code);
   }, [connected, join, router]);
 
   // Enable input only during gameplay

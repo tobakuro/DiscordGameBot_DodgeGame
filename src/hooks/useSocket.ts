@@ -24,7 +24,7 @@ interface UseSocketReturn {
   gameOverData: GameOverPayload | null;
   countdown: number | null;
   error: string | null;
-  join: (discord_id: string, username: string) => void;
+  join: (username: string, auth_code: string) => void;
   sendReady: () => void;
   sendInput: (dx: number, dy: number) => void;
   socketId: string | null;
@@ -105,8 +105,8 @@ export function useSocket(roomCode: string, options?: UseSocketOptions): UseSock
   }, [roomCode]);
 
   const join = useCallback(
-    (discord_id: string, username: string) => {
-      socketRef.current?.emit('join', { roomCode, discord_id, username });
+    (username: string, auth_code: string) => {
+      socketRef.current?.emit('join', { roomCode, username, auth_code });
     },
     [roomCode]
   );

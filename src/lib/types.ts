@@ -54,8 +54,8 @@ export type RoomStatus = 'waiting' | 'playing' | 'finished';
 // ============================================================
 export interface JoinPayload {
   roomCode: string;
-  discord_id: string;
   username: string;
+  auth_code: string;
 }
 
 export interface InputPayload {

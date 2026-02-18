@@ -1,14 +1,30 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 import { GameStatePayload } from '@/lib/types';
 import { FIELD_WIDTH, FIELD_HEIGHT, TICK_INTERVAL, INVINCIBILITY_TICKS } from '@/lib/constants';
+import VirtualJoystick from './VirtualJoystick';
 
 // Player colors
 const PLAYER_COLORS = ['#3b82f6', '#ef4444', '#22c55e']; // blue, red, green
 const PLAYER_DEAD_ALPHA = 0.3;
 // Duration of hit flash on client (ms) — matches server invincibility
 const HIT_FLASH_DURATION_MS = INVINCIBILITY_TICKS * (1000 / 20);
+
+// Canvas background stars (static, generated once at module level)
+interface CanvasStar {
+  x: number;
+  y: number;
+  size: number;
+  brightness: number;
+}
+
+const CANVAS_STARS: CanvasStar[] = Array.from({ length: 80 }, () => ({
+  x: Math.random() * FIELD_WIDTH,
+  y: Math.random() * FIELD_HEIGHT,
+  size: Math.random() * 1.5 + 0.5,
+  brightness: Math.random() * 0.5 + 0.2,
+}));
 
 interface GameCanvasProps {
   gameState: GameStatePayload | null;
@@ -23,6 +39,7 @@ export default function GameCanvas({
   prevGameState,
   currentSocketId,
   countdown,
+  sendInput,
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateTimeRef = useRef<number>(0);
@@ -31,11 +48,8 @@ export default function GameCanvas({
   // Track hit flash timestamps per player id
   const hitFlashRef = useRef<Map<string, number>>(new Map());
 
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
-
-  useEffect(() => {
-    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
-  }, []);
+  const isTouchDevice = typeof window !== 'undefined' &&
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
   // Update refs when new state arrives, detect HP changes for flash
   useEffect(() => {
@@ -64,51 +78,42 @@ export default function GameCanvas({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const stars = CANVAS_STARS;
     let animId: number;
 
     const draw = () => {
       animId = requestAnimationFrame(draw);
 
       const curr = currStateRef.current;
-      if (!curr) {
-        ctx.fillStyle = '#111827';
-        ctx.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
-        return;
+      const now = performance.now();
+
+      // Background — deep space
+      ctx.fillStyle = '#050816';
+      ctx.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+
+      // Stars background (twinkle effect)
+      for (const star of stars) {
+        const twinkle = star.brightness + 0.3 * Math.sin(now / 1000 + star.x * 10 + star.y);
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0.05, Math.min(twinkle, 0.8))})`;
+        ctx.fill();
       }
+
+      if (!curr) return;
 
       const prev = prevStateRef.current;
       const elapsed = performance.now() - stateTimeRef.current;
       const t = Math.min(elapsed / TICK_INTERVAL, 1);
-      const now = performance.now();
-
-      // Background
-      ctx.fillStyle = '#111827';
-      ctx.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
-
-      // Grid lines
-      ctx.strokeStyle = '#1f2937';
-      ctx.lineWidth = 1;
-      for (let x = 0; x <= FIELD_WIDTH; x += 50) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, FIELD_HEIGHT);
-        ctx.stroke();
-      }
-      for (let y = 0; y <= FIELD_HEIGHT; y += 50) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(FIELD_WIDTH, y);
-        ctx.stroke();
-      }
 
       // Center marker (bullet spawn point)
       ctx.beginPath();
       ctx.arc(FIELD_WIDTH / 2, FIELD_HEIGHT / 2, 8, 0, Math.PI * 2);
-      ctx.strokeStyle = '#374151';
+      ctx.strokeStyle = 'rgba(99, 102, 241, 0.3)';
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Bullets
+      // Bullets — double glow
       for (const bullet of curr.bullets) {
         let bx = bullet.x;
         let by = bullet.y;
@@ -121,14 +126,22 @@ export default function GameCanvas({
           }
         }
 
+        // Outer glow
+        ctx.save();
+        ctx.shadowColor = '#f97316';
+        ctx.shadowBlur = 16;
+        ctx.beginPath();
+        ctx.arc(bx, by, bullet.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(249, 115, 22, 0.4)';
+        ctx.fill();
+
+        // Inner glow
+        ctx.shadowBlur = 8;
         ctx.beginPath();
         ctx.arc(bx, by, bullet.radius, 0, Math.PI * 2);
         ctx.fillStyle = '#f97316';
         ctx.fill();
-        ctx.shadowColor = '#f97316';
-        ctx.shadowBlur = 6;
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        ctx.restore();
       }
 
       // Players
@@ -160,6 +173,21 @@ export default function GameCanvas({
 
         ctx.globalAlpha = alpha;
 
+        // Glow ring
+        if (player.alive) {
+          ctx.save();
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.arc(px, py, player.radius + 3, 0, Math.PI * 2);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.5;
+          ctx.globalAlpha = alpha * 0.4;
+          ctx.stroke();
+          ctx.restore();
+          ctx.globalAlpha = alpha;
+        }
+
         // Player circle
         ctx.beginPath();
         ctx.arc(px, py, player.radius, 0, Math.PI * 2);
@@ -179,24 +207,6 @@ export default function GameCanvas({
         ctx.textAlign = 'center';
         ctx.fillText(player.username, px, py - player.radius - 20);
 
-        // HP bar (above username)
-        if (player.alive) {
-          const hpBarWidth = 30;
-          const hpBarHeight = 4;
-          const hpBarX = px - hpBarWidth / 2;
-          const hpBarY = py - player.radius - 16;
-
-          // Background
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-          ctx.fillRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
-
-          // HP fill (green → yellow → red)
-          const ratio = player.hp / player.maxHp;
-          const hpColor = ratio > 0.66 ? '#22c55e' : ratio > 0.33 ? '#eab308' : '#ef4444';
-          ctx.fillStyle = hpColor;
-          ctx.fillRect(hpBarX, hpBarY, hpBarWidth * ratio, hpBarHeight);
-        }
-
         // Dead indicator
         if (!player.alive) {
           ctx.strokeStyle = '#ef4444';
@@ -214,7 +224,7 @@ export default function GameCanvas({
 
       // Countdown overlay
       if (countdown !== null && countdown > 0) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillStyle = 'rgba(5, 8, 22, 0.7)';
         ctx.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 96px sans-serif';
@@ -226,7 +236,7 @@ export default function GameCanvas({
       // Elapsed time display
       if (curr.elapsed > 0 && countdown === null) {
         const seconds = Math.floor((curr.elapsed * TICK_INTERVAL) / 1000);
-        ctx.fillStyle = '#9ca3af';
+        ctx.fillStyle = 'rgba(165, 180, 252, 0.6)';
         ctx.font = '14px sans-serif';
         ctx.textAlign = 'right';
         ctx.textBaseline = 'top';
@@ -245,7 +255,7 @@ export default function GameCanvas({
   const myColor = PLAYER_COLORS[myIndex % PLAYER_COLORS.length];
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-950">
+    <div className="flex items-center justify-center min-h-screen relative z-10">
       <div>
         {/* Self status — left-aligned above canvas */}
         {myPlayer && (
@@ -254,7 +264,7 @@ export default function GameCanvas({
               className="inline-block w-3 h-3 rounded-full"
               style={{ backgroundColor: myColor }}
             />
-            <span className="text-sm text-gray-300 font-medium">
+            <span className="text-sm text-indigo-200 font-medium">
               {myPlayer.username}
             </span>
             <span className="flex gap-1 ml-1">
@@ -262,7 +272,7 @@ export default function GameCanvas({
                 <span
                   key={i}
                   className={`inline-block w-2.5 h-2.5 rounded-sm ${
-                    i < myPlayer.hp ? 'bg-green-500' : 'bg-gray-700'
+                    i < myPlayer.hp ? 'bg-green-500' : 'bg-indigo-900/50'
                   }`}
                 />
               ))}
@@ -278,12 +288,19 @@ export default function GameCanvas({
             ref={canvasRef}
             width={FIELD_WIDTH}
             height={FIELD_HEIGHT}
-            className="border border-gray-700 rounded-lg"
+            className="border border-indigo-500/30 rounded-lg"
           />
         </div>
-        <p className="text-gray-500 text-sm text-center mt-2">
+        <p className="text-indigo-400/50 text-sm text-center mt-2">
           {isTouchDevice ? 'Use joystick to move' : 'WASD or Arrow Keys to move'}
         </p>
+
+        {/* Virtual Joystick for touch devices */}
+        {isTouchDevice && sendInput && (
+          <div className="flex justify-center mt-4">
+            <VirtualJoystick onInput={sendInput} />
+          </div>
+        )}
       </div>
     </div>
   );

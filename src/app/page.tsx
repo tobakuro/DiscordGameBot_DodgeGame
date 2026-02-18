@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
+const isGuestMode = process.env.NEXT_PUBLIC_GUEST_MODE === 'true';
+
 export default function Home() {
   const router = useRouter();
   const [username, setUsername] = useState('');
@@ -13,13 +15,13 @@ export default function Home() {
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !authCode.trim() || !roomCode.trim()) {
+    if (!username.trim() || (!isGuestMode && !authCode.trim()) || !roomCode.trim()) {
       setError('すべての項目を入力してください。');
       return;
     }
     // Store credentials in sessionStorage for the game page
     sessionStorage.setItem('username', username.trim());
-    sessionStorage.setItem('auth_code', authCode.trim());
+    sessionStorage.setItem('auth_code', isGuestMode ? 'guest' : authCode.trim());
     router.push(`/dodge/${roomCode.trim().toUpperCase()}`);
   };
 
@@ -52,21 +54,23 @@ export default function Home() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-indigo-200 mb-1">
-              認証コード
-            </label>
-            <input
-              type="text"
-              value={authCode}
-              onChange={(e) => setAuthCode(e.target.value)}
-              placeholder="BotのDMに届いたコードを入力"
-              className="w-full px-4 py-2 rounded-lg bg-indigo-900/40 border border-indigo-500/30 text-white placeholder-indigo-400/40 focus:outline-none focus:border-indigo-400 transition-colors"
-            />
-            <p className="text-indigo-400/50 text-xs mt-1">
-              DiscordのBotから受け取った認証コードを入力してください
-            </p>
-          </div>
+          {!isGuestMode && (
+            <div>
+              <label className="block text-sm font-medium text-indigo-200 mb-1">
+                認証コード
+              </label>
+              <input
+                type="text"
+                value={authCode}
+                onChange={(e) => setAuthCode(e.target.value)}
+                placeholder="BotのDMに届いたコードを入力"
+                className="w-full px-4 py-2 rounded-lg bg-indigo-900/40 border border-indigo-500/30 text-white placeholder-indigo-400/40 focus:outline-none focus:border-indigo-400 transition-colors"
+              />
+              <p className="text-indigo-400/50 text-xs mt-1">
+                DiscordのBotから受け取った認証コードを入力してください
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-indigo-200 mb-1">

@@ -1,6 +1,7 @@
 import {
   Player,
   Bullet,
+  Item,
   PlayerPublic,
   GameStatePayload,
   GameOverPayload,
@@ -24,14 +25,23 @@ import {
   PLAYER_MAX_HP,
   INVINCIBILITY_TICKS,
   STARTING_POSITIONS,
+  ITEM_RADIUS,
+  ITEM_SPAWN_INTERVAL_TICKS,
+  ITEM_MAX_ON_FIELD,
+  ITEM_KNOCKBACK,
+  ITEM_HELD_DURATION_TICKS,
 } from './constants';
 
 let bulletIdCounter = 0;
+let itemIdCounter = 0;
 
 export class GameEngine {
   roomCode: string;
   players: Map<string, Player> = new Map();
   bullets: Bullet[] = [];
+  items: Item[] = [];
+  // track when each held item expires: itemId → expiry tick
+  private itemExpiry: Map<string, number> = new Map();
   tick = 0;
   status: RoomStatus = 'waiting';
   private inputs: Map<string, { dx: number; dy: number }> = new Map();
@@ -106,6 +116,8 @@ export class GameEngine {
     this.status = 'playing';
     this.tick = 0;
     this.bullets = [];
+    this.items = [];
+    this.itemExpiry = new Map();
     this.eliminationOrder = [];
   }
 
@@ -234,13 +246,111 @@ export class GameEngine {
       }
     }
 
-    // 7. Check win condition
+    // 7. Item logic
+    this.processItems(alivePlayers);
+
+    // 8. Check win condition
     const remaining = this.getAlivePlayers();
     if (remaining.length <= 1) {
       this.status = 'finished';
     }
 
     return { hits };
+  }
+
+  // --------------------------------------------------------
+  // Item processing
+  // --------------------------------------------------------
+  private processItems(alivePlayers: Player[]): void {
+    // Expire held items
+    for (const item of this.items) {
+      if (item.heldBy !== null) {
+        const expiry = this.itemExpiry.get(item.id);
+        if (expiry !== undefined && this.tick >= expiry) {
+          item.heldBy = null;
+          this.itemExpiry.delete(item.id);
+        }
+      }
+    }
+
+    // Remove expired (no longer held, already used) — items on field stay until picked up
+    // Items that were held and expired become null heldBy but stay until removed below
+    this.items = this.items.filter((item) => {
+      // Remove if held and expired (heldBy already cleared above, so remove orphans)
+      if (item.heldBy === null && !this.itemExpiry.has(item.id)) {
+        // If it was never picked up it's still on the field — keep it
+        // We track "was ever held" by checking expiry map; if absent and heldBy null it's on field
+        return true;
+      }
+      return true;
+    });
+    // Simpler: just remove items whose expiry tick has passed and heldBy is null
+    // (already cleaned above). Keep field items indefinitely until picked up.
+
+    // Spawn new items
+    const fieldItems = this.items.filter((i) => i.heldBy === null && !this.itemExpiry.has(i.id));
+    if (
+      fieldItems.length < ITEM_MAX_ON_FIELD &&
+      this.tick % ITEM_SPAWN_INTERVAL_TICKS === 0 &&
+      this.tick > 0
+    ) {
+      const margin = 60;
+      this.items.push({
+        id: `item${itemIdCounter++}`,
+        x: margin + Math.random() * (FIELD_WIDTH - margin * 2),
+        y: margin + Math.random() * (FIELD_HEIGHT - margin * 2),
+        radius: ITEM_RADIUS,
+        heldBy: null,
+      });
+    }
+
+    // Pickup: player touches field item
+    for (const item of this.items) {
+      if (item.heldBy !== null) continue;
+      if (this.itemExpiry.has(item.id)) continue; // expired, being cleaned
+      for (const player of alivePlayers) {
+        if (checkCollision(player, item)) {
+          item.heldBy = player.id;
+          this.itemExpiry.set(item.id, this.tick + ITEM_HELD_DURATION_TICKS);
+          break;
+        }
+      }
+    }
+
+    // Use: holder collides with another alive player → knockback
+    for (const item of this.items) {
+      if (item.heldBy === null) continue;
+      const holder = this.players.get(item.heldBy);
+      if (!holder || !holder.alive) continue;
+
+      // Move item to holder position
+      item.x = holder.x;
+      item.y = holder.y;
+
+      for (const other of alivePlayers) {
+        if (other.id === holder.id) continue;
+        if (checkCollision(holder, other)) {
+          // Apply knockback to the other player away from holder
+          const dist = Math.hypot(other.x - holder.x, other.y - holder.y) || 1;
+          const nx = (other.x - holder.x) / dist;
+          const ny = (other.y - holder.y) / dist;
+          other.x = clamp(other.x + nx * ITEM_KNOCKBACK, other.radius, FIELD_WIDTH - other.radius);
+          other.y = clamp(other.y + ny * ITEM_KNOCKBACK, other.radius, FIELD_HEIGHT - other.radius);
+          other.vx = nx * 6;
+          other.vy = ny * 6;
+
+          // Consume item
+          item.heldBy = null;
+          this.itemExpiry.delete(item.id);
+          // Mark item as used (remove from list)
+          this.items = this.items.filter((i) => i.id !== item.id);
+          break;
+        }
+      }
+    }
+
+    // Remove used items (heldBy null and expiry gone and not on field originally)
+    // Field items stay visible; held-then-expired items are already cleaned
   }
 
   // --------------------------------------------------------
@@ -304,6 +414,7 @@ export class GameEngine {
     return {
       players: Array.from(this.players.values()).map(toPublic),
       bullets: this.bullets,
+      items: this.items.filter((i) => i.heldBy === null),
       elapsed: this.tick,
     };
   }

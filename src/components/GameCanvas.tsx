@@ -10,6 +10,9 @@ import {
   playDeathSound,
   playCountdownBeep,
   playGoSound,
+  playItemPickupSound,
+  startBgm,
+  stopBgm,
 } from '@/lib/sounds';
 
 // Player colors
@@ -119,6 +122,11 @@ export default function GameCanvas({
   // Audio init flag
   const audioInitedRef = useRef(false);
 
+  // Item tracking for sound detection
+  const prevItemIdsRef = useRef<Set<string>>(new Set());
+  // BGM state
+  const bgmStartedRef = useRef(false);
+
   const isTouchDevice =
     typeof window !== 'undefined' &&
     ('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -192,9 +200,42 @@ export default function GameCanvas({
             playDeathSound();
           }
         }
+
+        // Item pickup sound: field item disappeared (was picked up or used)
+        const oldItemIds = prevItemIdsRef.current;
+        const newItemIds = new Set(gameState.items.map((i) => i.id));
+        for (const id of oldItemIds) {
+          if (!newItemIds.has(id)) {
+            ensureAudio();
+            // If an item vanished it was either picked up or used — play pickup sound
+            playItemPickupSound();
+          }
+        }
+        prevItemIdsRef.current = newItemIds;
+
+        // BGM: start on first game tick, stop when game over
+        const allDead = gameState.players.every((p) => !p.alive);
+        if (!bgmStartedRef.current && gameState.elapsed > 0) {
+          ensureAudio();
+          startBgm();
+          bgmStartedRef.current = true;
+        }
+        if (bgmStartedRef.current && allDead) {
+          stopBgm();
+          bgmStartedRef.current = false;
+        }
       }
     }
   }, [gameState, prevGameState, ensureAudio]);
+
+  // ============================================================
+  // Stop BGM on unmount
+  // ============================================================
+  useEffect(() => {
+    return () => {
+      stopBgm();
+    };
+  }, []);
 
   // ============================================================
   // Countdown sound + animation trigger
@@ -210,11 +251,15 @@ export default function GameCanvas({
       }
     }
 
-    // countdown just ended (prev was 0 or 1, now null) → GO!
+    // countdown just ended (prev was 0 or 1, now null) → GO! + BGM start
     if (countdown === null && prev !== null) {
       goFlashRef.current = performance.now();
       ensureAudio();
       playGoSound();
+      if (!bgmStartedRef.current) {
+        startBgm();
+        bgmStartedRef.current = true;
+      }
     }
 
     prevCountdownRef.current = countdown;
@@ -323,6 +368,32 @@ export default function GameCanvas({
         ctx.restore();
       }
 
+      // ---- Items ----
+      for (const item of curr.items) {
+        const pulse = 0.7 + 0.3 * Math.sin(now / 300);
+        ctx.save();
+        ctx.shadowColor = '#a78bfa';
+        ctx.shadowBlur = 18 * pulse;
+        // Outer ring
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(167, 139, 250, ${0.6 + 0.4 * pulse})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // Inner fill
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, item.radius * 0.55, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(167, 139, 250, ${0.35 * pulse})`;
+        ctx.fill();
+        // Symbol
+        ctx.fillStyle = '#e9d5ff';
+        ctx.font = `bold ${Math.round(item.radius * 1.1)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('💥', item.x, item.y);
+        ctx.restore();
+      }
+
       // ---- Players ----
       curr.players.forEach((player, index) => {
         let px = player.x;
@@ -383,7 +454,7 @@ export default function GameCanvas({
         if (player.id === currentSocketId) {
           ctx.beginPath();
           ctx.arc(px, py, r, 0, Math.PI * 2);
-          ctx.strokeStyle = '#ffffff';
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
           ctx.lineWidth = 3;
           ctx.stroke();
         }
@@ -554,7 +625,7 @@ export default function GameCanvas({
           />
         </div>
         <p className="text-indigo-400/50 text-sm text-center mt-2">
-          {isTouchDevice ? 'ジョイスティックで移動' : 'WASD または 矢印キーで移動'}
+          {isTouchDevice ? '仮想スティックを操作で移動！' : 'WASD or 方向キーを連打で移動！'}
         </p>
 
         {/* Virtual Joystick for touch devices */}

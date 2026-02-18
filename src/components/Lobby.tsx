@@ -22,7 +22,7 @@ export default function Lobby({ roomState, onReady, currentSocketId }: LobbyProp
         transition={{ duration: 0.5 }}
         className="bg-indigo-950/60 border border-indigo-500/20 rounded-2xl p-8 w-full max-w-md shadow-xl backdrop-blur-sm"
       >
-        <h1 className="text-2xl font-bold text-center mb-2 text-indigo-100">DodgeInvader</h1>
+        <h1 className="text-2xl font-bold text-center mb-2 text-indigo-100">NyaaGenesis</h1>
 
         {/* Room Code */}
         <div className="text-center mb-6">
